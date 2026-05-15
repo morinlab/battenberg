@@ -143,32 +143,24 @@ battenberg = function(tumourname, normalname, tumour_data_file, normal_data_file
   }
  
   if (!skip_phasing) {
-    # Setup for parallel computing
-    clp = parallel::makeCluster(nthreads)
-    doParallel::registerDoParallel(clp)
-    
-    foreach::foreach (chrom=1:length(chrom_names)) %dopar% {
-    
-    #switch to non-parallel for full verbose debugging mode
-    #for(chrom in 1:length(chrom_names)){
-      run_haplotyping(chrom=chrom, 
-                      tumourname=tumourname, 
-                      normalname=normalname, 
-                      ismale=ismale, 
-                      imputeinfofile=imputeinfofile, 
-                      problemloci=problemloci, 
-                      impute_exe=impute_exe, 
+    # Chromosomes processed sequentially; parallelism is within each chromosome
+    # across impute2 chunks via mclapply in run.impute
+    for(chrom in 1:length(chrom_names)) {
+      run_haplotyping(chrom=chrom,
+                      tumourname=tumourname,
+                      normalname=normalname,
+                      ismale=ismale,
+                      imputeinfofile=imputeinfofile,
+                      problemloci=problemloci,
+                      impute_exe=impute_exe,
                       min_normal_depth=min_normal_depth,
-    	                chrom_names=chrom_names,
-  		                snp6_reference_info_file=snp6_reference_info_file,
-  		                heterozygousFilter=heterozygousFilter,
+                      chrom_names=chrom_names,
+                      snp6_reference_info_file=snp6_reference_info_file,
+                      heterozygousFilter=heterozygousFilter,
                       chr_prefixed=chr_prefixed,
-                      logfile_prefix=logfile_prefix)
-                      
+                      logfile_prefix=logfile_prefix,
+                      nthreads=nthreads)
     }
-    
-    # Kill the threads as from here its all single core
-    parallel::stopCluster(clp)
     
   
 

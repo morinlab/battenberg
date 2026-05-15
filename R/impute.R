@@ -11,37 +11,33 @@
 #' @param seed The seed to be set
 #' @author dw9
 #' @export
-run.impute = function(inputfile, outputfile.prefix, is.male, imputeinfofile, impute.exe="impute2", region.size=5000000, chrom=NA, seed=as.integer(Sys.time()),logfile_prefix = "./") {
-  # Read in the impute file information
+run.impute = function(inputfile, outputfile.prefix, is.male, imputeinfofile, impute.exe="impute2", region.size=5000000, chrom=NA, seed=as.integer(Sys.time()), logfile_prefix="./", nthreads=1) {
   impute.info = parse.imputeinfofile(imputeinfofile, is.male, chrom=chrom)
-  # Run impute for each region of the size specified above
   for(r in 1:nrow(impute.info)){
-    boundaries = seq(as.numeric(impute.info[r,]$start),as.numeric(impute.info[r,]$end),region.size)
+    boundaries = seq(as.numeric(impute.info[r,]$start), as.numeric(impute.info[r,]$end), region.size)
     if(boundaries[length(boundaries)] != impute.info[r,]$end){
-      boundaries = c(boundaries,impute.info[r,]$end)
+      boundaries = c(boundaries, impute.info[r,]$end)
     }
 
-    # Take the start of the region+1 here to make sure there are no overlapping regions, wich causes a 
-    # problem with SNPs on exactly the boundary. It does mean the first base on the first chromosome
-    # cannot be phased
-    for(b in 1:(length(boundaries)-1)){
-      out.log = paste0(outputfile.prefix, "_", boundaries[b]/1000, "K_", boundaries[b+1]/1000, "K.txt.stdout.log" )
+    # Build list of chunk indices and run all chunks for this chromosome in parallel
+    chunks = 1:(length(boundaries)-1)
+    parallel::mclapply(chunks, function(b) {
+      out.log = paste0(outputfile.prefix, "_", boundaries[b]/1000, "K_", boundaries[b+1]/1000, "K.txt.stdout.log")
       cmd = paste0(impute.exe,
                   " -m ", impute.info[r,]$genetic_map,
                   " -h ", impute.info[r,]$impute_hap,
                   " -l ", impute.info[r,]$impute_legend,
                   " -g ", inputfile,
                   " -int ", boundaries[b]+1, " ", boundaries[b+1],
-                  " -Ne 20000", # Authors of impute2 mention that this parameter works best on all population types, thus hardcoded.
-                  " -o ", outputfile.prefix, "_", boundaries[b]/1000, "K_", boundaries[b+1]/1000, "K.txt", 
-                  " -phase", 
+                  " -Ne 20000",
+                  " -o ", outputfile.prefix, "_", boundaries[b]/1000, "K_", boundaries[b+1]/1000, "K.txt",
+                  " -phase",
                   " -seed ", seed,
                   " -os 2",
-                  " > ", out.log) # lowers computational cost by not imputing reference only SNPs
-      print(paste("RUNNING:",cmd))
-      system(cmd, wait=T)
-      
-    }
+                  " > ", out.log)
+      print(paste("RUNNING:", cmd))
+      system(cmd, wait=TRUE)
+    }, mc.cores=nthreads)
   }
 }
 
@@ -145,7 +141,7 @@ combine.impute.output = function(inputfile.prefix, outputfile, is.male, imputein
 #' @author sd11
 #' @export
 run_haplotyping = function(chrom, tumourname, normalname, ismale, imputeinfofile, problemloci, impute_exe, min_normal_depth, chrom_names,
-                           snp6_reference_info_file=NA, heterozygousFilter=NA,chr_prefixed = FALSE, logfile_prefix="./") {
+                           snp6_reference_info_file=NA, heterozygousFilter=NA, chr_prefixed=FALSE, logfile_prefix="./", nthreads=1) {
   print("Running modified haplotyping")
   #uses numeric (1-23) chromosome names, should this change?
   af_prefix = "_alleleFrequencies_chr"
@@ -191,7 +187,8 @@ run_haplotyping = function(chrom, tumourname, normalname, ismale, imputeinfofile
              impute.exe=impute_exe,
              region.size=region_size,
              chrom=chrom,
-             logfile_prefix = lofile_prefix)
+             logfile_prefix=logfile_prefix,
+             nthreads=nthreads)
 
   # As impute runs in windows across a chromosome we need to assemble the output
   combine.impute.output(inputfile.prefix=paste(tumourname, imp_prefix_o, chrom, ".txt", sep=""),
