@@ -52,7 +52,16 @@ getAlleleCounts = function(bam.file, output.file, g1000.loci, min.base.qual=20, 
 
   system(cmd, wait=T)
 
-  if (!is.null(temp_loci)) file.remove(temp_loci)
+  if (!is.null(temp_loci)) {
+    file.remove(temp_loci)
+    # alleleCounter copies chromosome names from the loci file into its output.
+    # Since we added chr prefix to the loci file, the output now has chr-prefixed
+    # names that won't match the non-prefixed 1000G alleles data used downstream.
+    # Strip the prefix from the output file (skip the header line).
+    lines = readLines(output.file)
+    lines[-1] = sub("^chr", "", lines[-1])
+    writeLines(lines, output.file)
+  }
 }
 
 
