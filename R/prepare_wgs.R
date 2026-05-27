@@ -10,11 +10,27 @@
 #' @param ref_fasta A full path to the fasta reference file used (optional but needed for CRAM support)
 #' @author sd11
 #' @export
-getAlleleCounts = function(bam.file, output.file, g1000.loci, min.base.qual=20, min.map.qual=35, allelecounter.exe="alleleCounter", ref_fasta=NULL) {
+getAlleleCounts = function(bam.file, output.file, g1000.loci, min.base.qual=20, min.map.qual=35, allelecounter.exe="alleleCounter", ref_fasta=NULL, add_chr_prefix=FALSE) {
+
+  # When the BAM uses chr-prefixed chromosome names but the loci file does not,
+  # alleleCounter silently produces header-only output. add_chr_prefix=TRUE
+  # rewrites the loci file to a temp file with "chr" prepended to the
+  # chromosome column. Detection of the mismatch is done once in prepare_wgs
+  # before the parallel loop so this branch only fires when actually needed.
+  loci_to_use = g1000.loci
+  temp_loci = NULL
+  if (add_chr_prefix) {
+    loci_data = read.table(g1000.loci, header=FALSE, sep="\t", stringsAsFactors=FALSE)
+    loci_data[, 1] = paste0("chr", loci_data[, 1])
+    temp_loci = tempfile(fileext=".txt")
+    write.table(loci_data, temp_loci, sep="\t", quote=FALSE, row.names=FALSE, col.names=FALSE)
+    loci_to_use = temp_loci
+  }
+
   if(!is.null(ref_fasta)){
     cmd = paste(allelecounter.exe,
               "-b", bam.file,
-              "-l", g1000.loci,
+              "-l", loci_to_use,
               "-o", output.file,
               "-m", min.base.qual,
               "-q", min.map.qual,
@@ -22,19 +38,21 @@ getAlleleCounts = function(bam.file, output.file, g1000.loci, min.base.qual=20, 
   } else{
     cmd = paste(allelecounter.exe,
               "-b", bam.file,
-              "-l", g1000.loci,
+              "-l", loci_to_use,
               "-o", output.file,
               "-m", min.base.qual,
               "-q", min.map.qual)
   }
   # this seems to not work at all on CRAM files. Disabling for now
 
-  # alleleCount >= v4.0.0 is sped up considerably on 1000G loci when run in dense-snp mode            
+  # alleleCount >= v4.0.0 is sped up considerably on 1000G loci when run in dense-snp mode
   counter_version = system(paste(allelecounter.exe, "--version"), intern = T)
   if (as.integer(substr(x = counter_version, start = 1, stop = 1)) >= 4)
     cmd = paste(cmd, "--dense-snps")
-  
+
   system(cmd, wait=T)
+
+  if (!is.null(temp_loci)) file.remove(temp_loci)
 }
 
 
@@ -457,6 +475,18 @@ prepare_wgs = function(chrom_names, tumourbam, normalbam, tumourname, normalname
   requireNamespace("parallel")
   
   if (!skip_allele_counting) {
+    # Determine once whether the loci files need chr-prefix added to their
+    # chromosome column. This handles chr-prefixed BAMs (e.g. hg19 with chr
+    # prefix) paired with reference loci files that use non-prefixed names.
+    # For genomes where the loci files are already chr-prefixed (e.g. hg38)
+    # this check is fast (one line read) and add_chr_prefix stays FALSE.
+    add_chr_prefix = FALSE
+    if (chr_prefixed) {
+      test_loci = paste0(g1000allelesprefix, "1.txt")
+      first_chr = strsplit(readLines(test_loci, n=1), "\t")[[1]][1]
+      add_chr_prefix = !startsWith(first_chr, "chr")
+    }
+
     # Obtain allele counts for 1000 Genomes locations for both tumour and normal
     foreach::foreach(i=1:length(chrom_names)) %dopar% {
       #use numbered chromosomes here rather than the names
@@ -466,15 +496,17 @@ prepare_wgs = function(chrom_names, tumourbam, normalbam, tumourname, normalname
                       min.base.qual=min_base_qual,
                       min.map.qual=min_map_qual,
                       allelecounter.exe=allelecounter_exe,
-                      ref_fasta=ref_fasta)
-  
+                      ref_fasta=ref_fasta,
+                      add_chr_prefix=add_chr_prefix)
+
       getAlleleCounts(bam.file=normalbam,
                       output.file=paste(normalname,"_alleleFrequencies_chr", i, ".txt",  sep=""),
                       g1000.loci=paste(g1000allelesprefix, i, ".txt", sep=""),
                       min.base.qual=min_base_qual,
                       min.map.qual=min_map_qual,
                       allelecounter.exe=allelecounter_exe,
-                      ref_fasta=ref_fasta)
+                      ref_fasta=ref_fasta,
+                      add_chr_prefix=add_chr_prefix)
     }
   }
   if(verbose){
