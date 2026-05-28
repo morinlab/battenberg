@@ -132,6 +132,7 @@ getBAFsAndLogRs = function(tumourAlleleCountsFile.prefix,
   allele_data = allele_data[chrpos_allele %in% matched_data,]
   normal_input_data = normal_input_data[chrpos_tumour %in% matched_data,]
   input_data = input_data[chrpos_tumour %in% matched_data,]
+  rm(chrpos_allele, chrpos_normal, chrpos_tumour, matched_data)
 
   # Clean up and reduce amount of unneeded data
   names(input_data)[1] = "CHR"
@@ -190,6 +191,8 @@ getBAFsAndLogRs = function(tumourAlleleCountsFile.prefix,
   tumor.BAF = data.frame(Chromosome=input_data$CHR[indices], Position=input_data$POS[indices], baf=mutantBAF)
   tumor.LogR = data.frame(Chromosome=input_data$CHR[indices], Position=input_data$POS[indices], samplename=log2(mutantLogR/mean(mutantLogR, na.rm=T)))	
   alleleCounts = data.frame(Chromosome=input_data$CHR[indices], Position=input_data$POS[indices], mutCountT1=mutCount1, mutCountT2=mutCount2, mutCountN1=normCount1, mutCountN2=normCount2)
+  rm(input_data, indices, normalBAF, mutantBAF, normalLogR, mutantLogR,
+     normCount1, normCount2, mutCount1, mutCount2, totalNormal, totalMutant)
   if(verbose){
     print("outputting logR and BAF data to disk")
   }
@@ -199,7 +202,8 @@ getBAFsAndLogRs = function(tumourAlleleCountsFile.prefix,
   write.table(germline.LogR,file=logRnormalFile, row.names=F, quote=F, sep="\t", col.names=c("Chromosome","Position",samplename))
   write.table(tumor.LogR,file=logRmutantFile, row.names=F, quote=F, sep="\t", col.names=c("Chromosome","Position",samplename))
   write.table(alleleCounts, file=combinedAlleleCountsFile, row.names=F, quote=F, sep="\t")
-  
+  rm(alleleCounts)
+
   # Plot the raw data using ASCAT
   # Manually create an ASCAT object, which saves reading in the above files again
   SNPpos = germline.BAF[,c("Chromosome", "Position")]
@@ -220,6 +224,8 @@ getBAFsAndLogRs = function(tumourAlleleCountsFile.prefix,
                   ch=ch)
 
   ASCAT::ascat.plotRawData(ascat.bc) #, parentDir=figuresFile.prefix)
+  rm(germline.BAF, germline.LogR, tumor.BAF, tumor.LogR, SNPpos, ch, ascat.bc)
+  gc()
 }
 
 #' Prepare data for impute
@@ -277,8 +283,10 @@ generate.impute.input.wgs = function(chrom, tumour.allele.counts.file, normal.al
   }
   
   # Read in the allele counts and see which known SNPs are covered
-  snp_data = read.table(tumour.allele.counts.file, comment.char="#", sep="\t", header=F, stringsAsFactors=F)
-  normal_snp_data = read.table(normal.allele.counts.file, comment.char="#", sep="\t", header=F, stringsAsFactors=F)
+  snp_data = read.table(tumour.allele.counts.file, comment.char="#", sep="\t", header=F, stringsAsFactors=F,
+    colClasses=c("character","integer","integer","integer","integer","integer"))
+  normal_snp_data = read.table(normal.allele.counts.file, comment.char="#", sep="\t", header=F, stringsAsFactors=F,
+    colClasses=c("character","integer","integer","integer","integer","integer"))
   print("tumour SNP")
   print(head(snp_data))
   print("normal SNP")
@@ -542,6 +550,8 @@ prepare_wgs = function(chrom_names, tumourbam, normalbam, tumourname, normalname
                   samplename=tumourname,
                   chr_prefixed=chr_prefixed,
                   verbose=verbose)
+
+  gc()
 
   # Perform GC correction
   gc.correct.wgs(Tumour_LogR_file=paste(tumourname,"_mutantLogR.tab", sep=""),
