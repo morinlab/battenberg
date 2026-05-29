@@ -19,25 +19,49 @@ run.impute = function(inputfile, outputfile.prefix, is.male, imputeinfofile, imp
       boundaries = c(boundaries, impute.info[r,]$end)
     }
 
-    # Build list of chunk indices and run all chunks for this chromosome in parallel
+    # Build per-chunk argument lists containing only the small values each
+    # worker needs. Workers are launched as fresh R processes via a PSOCK
+    # cluster so they carry ~100 MB of base overhead rather than inheriting
+    # the full parent heap through mclapply's fork().
     chunks = 1:(length(boundaries)-1)
-    parallel::mclapply(chunks, function(b) {
-      out.log = paste0(outputfile.prefix, "_", boundaries[b]/1000, "K_", boundaries[b+1]/1000, "K.txt.stdout.log")
-      cmd = paste0(impute.exe,
-                  " -m ", impute.info[r,]$genetic_map,
-                  " -h ", impute.info[r,]$impute_hap,
-                  " -l ", impute.info[r,]$impute_legend,
-                  " -g ", inputfile,
-                  " -int ", boundaries[b]+1, " ", boundaries[b+1],
-                  " -Ne 20000",
-                  " -o ", outputfile.prefix, "_", boundaries[b]/1000, "K_", boundaries[b+1]/1000, "K.txt",
-                  " -phase",
-                  " -seed ", seed,
-                  " -os 2",
-                  " > ", out.log)
-      print(paste("RUNNING:", cmd))
-      system(cmd, wait=TRUE)
-    }, mc.cores=nthreads)
+    chunk_args = lapply(chunks, function(b) list(
+      b                 = b,
+      boundaries        = boundaries,
+      impute_row        = impute.info[r, ],
+      inputfile         = inputfile,
+      outputfile.prefix = outputfile.prefix,
+      impute.exe        = impute.exe,
+      seed              = seed
+    ))
+    cl = parallel::makeCluster(min(nthreads, length(chunks)))
+    tryCatch(
+      parallel::parLapply(cl, chunk_args, function(d) {
+        out.log = paste0(
+          d$outputfile.prefix, "_",
+          d$boundaries[d$b] / 1000, "K_",
+          d$boundaries[d$b + 1] / 1000, "K.txt.stdout.log"
+        )
+        cmd = paste0(
+          d$impute.exe,
+          " -m ", d$impute_row$genetic_map,
+          " -h ", d$impute_row$impute_hap,
+          " -l ", d$impute_row$impute_legend,
+          " -g ", d$inputfile,
+          " -int ", d$boundaries[d$b] + 1, " ", d$boundaries[d$b + 1],
+          " -Ne 20000",
+          " -o ", d$outputfile.prefix, "_",
+                  d$boundaries[d$b] / 1000, "K_",
+                  d$boundaries[d$b + 1] / 1000, "K.txt",
+          " -phase",
+          " -seed ", d$seed,
+          " -os 2",
+          " > ", out.log
+        )
+        print(paste("RUNNING:", cmd))
+        system(cmd, wait = TRUE)
+      }),
+      finally = parallel::stopCluster(cl)
+    )
   }
 }
 
