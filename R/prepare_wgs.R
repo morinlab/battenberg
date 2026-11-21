@@ -238,7 +238,7 @@ getBAFsAndLogRs = function(tumourAlleleCountsFile.prefix,
 #' @param is.male Boolean denoting whether this sample is male (TRUE), or female (FALSE).
 #' @param problemLociFile A file containing genomic locations that must be discarded (optional).
 #' @param useLociFile A file containing genomic locations that must be included (optional).
-#' @param heterozygousFilter The cutoff where a SNP will be considered as heterozygous (default 0.01).
+#' @param heterozygousFilter A SNP is called heterozygous when the normal BAF is strictly between this value and 1 minus it (default 0.1).
 #' @author dw9, sd11
 #' @export
 generate.impute.input.wgs = function(chrom, tumour.allele.counts.file, normal.allele.counts.file, output.file, imputeinfofile, is.male, problemLociFile=NA, 
@@ -311,6 +311,10 @@ generate.impute.input.wgs = function(chrom, tumour.allele.counts.file, normal.al
   
   print(head(BAFs))
   # Set the minimum level to use for obtaining genotypes
+  if (!is.numeric(heterozygousFilter) || length(heterozygousFilter) != 1 || is.na(heterozygousFilter) || heterozygousFilter <= 0 || heterozygousFilter >= 0.5) {
+    stop("heterozygousFilter must be a single number between 0 and 0.5 (exclusive), got: ", paste(heterozygousFilter, collapse=","))
+  }
+  print(paste("Calling heterozygous SNPs with normal BAF in (", heterozygousFilter, ",", 1 - heterozygousFilter, ")", sep=""))
   minBaf = min(heterozygousFilter, 1.0-heterozygousFilter)
   maxBaf = max(heterozygousFilter, 1.0-heterozygousFilter)
   

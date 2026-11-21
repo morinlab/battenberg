@@ -42,6 +42,7 @@
 #' @param norm.geno.clust.exe  Helper tool for extracting data from CEL files, SNP6 pipeline only (Default: normalize_affy_geno_cluster.pl)
 #' @param birdseed_report_file Sex inference output file, SNP6 pipeline only (Default: birdseed.report.txt)
 #' @param heterozygousFilter Legacy option to set a heterozygous SNP filter, SNP6 pipeline only (Default: "none")
+#' @param het_baf_cutoff WGS only: a SNP is called heterozygous in the matched normal when its BAF is strictly between het_baf_cutoff and 1-het_baf_cutoff. Raise it (e.g. 0.2) for noisy normals, where reads at homozygous SNPs give false heterozygous calls, most visibly in germline runs of homozygosity (Default: 0.1)
 #' @param prior_breakpoints_file A two column file with prior breakpoints to be used during segmentation (Default: NULL)
 #' @author sd11
 #' @export
@@ -51,7 +52,7 @@ battenberg = function(tumourname, normalname, tumour_data_file, normal_data_file
                       max_ploidy=4.8, min_rho=0.1, min_goodness=0.63, uninformative_BAF_threshold=0.51, min_normal_depth=10, min_base_qual=20, 
                       min_map_qual=35, calc_seg_baf_option=3, skip_allele_counting=F, skip_preprocessing=F, skip_phasing=F,
                       snp6_reference_info_file=NA, apt.probeset.genotype.exe="apt-probeset-genotype", apt.probeset.summarize.exe="apt-probeset-summarize", 
-                      norm.geno.clust.exe="normalize_affy_geno_cluster.pl", birdseed_report_file="birdseed.report.txt", heterozygousFilter="none",
+                      norm.geno.clust.exe="normalize_affy_geno_cluster.pl", birdseed_report_file="birdseed.report.txt", heterozygousFilter="none", het_baf_cutoff=0.1,
                       prior_breakpoints_file=NULL,chr_prefixed=FALSE,verbose=FALSE,logfile_prefix="./",ref_fasta=NULL) {
   
   requireNamespace("foreach")
@@ -157,6 +158,7 @@ battenberg = function(tumourname, normalname, tumour_data_file, normal_data_file
                       chrom_names=chrom_names,
                       snp6_reference_info_file=snp6_reference_info_file,
                       heterozygousFilter=heterozygousFilter,
+                      het_baf_cutoff=het_baf_cutoff,
                       chr_prefixed=chr_prefixed,
                       logfile_prefix=logfile_prefix,
                       nthreads=nthreads)

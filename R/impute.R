@@ -162,10 +162,11 @@ combine.impute.output = function(inputfile.prefix, outputfile, is.male, imputein
 #' @param chrom_names A vector containing the names of chromosomes to be included
 #' @param snp6_reference_info_file SNP6 only parameter Default: NA
 #' @param heterozygousFilter SNP6 only parameter Default: NA
+#' @param het_baf_cutoff WGS only: normal BAF must be strictly between het_baf_cutoff and 1-het_baf_cutoff for a SNP to be called heterozygous (Default: 0.1)
 #' @author sd11
 #' @export
 run_haplotyping = function(chrom, tumourname, normalname, ismale, imputeinfofile, problemloci, impute_exe, min_normal_depth, chrom_names,
-                           snp6_reference_info_file=NA, heterozygousFilter=NA, chr_prefixed=FALSE, logfile_prefix="./", nthreads=1) {
+                           snp6_reference_info_file=NA, heterozygousFilter=NA, het_baf_cutoff=0.1, chr_prefixed=FALSE, logfile_prefix="./", nthreads=1) {
   print("Running modified haplotyping")
   #uses numeric (1-23) chromosome names, should this change?
   af_prefix = "_alleleFrequencies_chr"
@@ -188,7 +189,8 @@ run_haplotyping = function(chrom, tumourname, normalname, ismale, imputeinfofile
                               imputeinfofile=imputeinfofile,
                               is.male=ismale,
                               problemLociFile=problemloci,
-                              useLociFile=NA)
+                              useLociFile=NA,
+                              heterozygousFilter=het_baf_cutoff)
   } else {
     
     generate.impute.input.snp6(infile.germlineBAF=paste(tumourname, "_germlineBAF.tab", sep=""),

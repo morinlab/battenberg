@@ -33,7 +33,7 @@ generate.impute.input.wgs(
 
 \item{useLociFile}{A file containing genomic locations that must be included (optional).}
 
-\item{heterozygousFilter}{The cutoff where a SNP will be considered as heterozygous (default 0.01).}
+\item{heterozygousFilter}{A SNP is called heterozygous when the normal BAF is strictly between this value and 1 minus it (default 0.1).}
 }
 \description{
 Prepare data for impute

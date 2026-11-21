@@ -15,7 +15,8 @@ run_haplotyping(
   min_normal_depth,
   chrom_names,
   snp6_reference_info_file = NA,
-  heterozygousFilter = NA
+  heterozygousFilter = NA,
+  het_baf_cutoff = 0.1
 )
 }
 \arguments{
@@ -40,6 +41,8 @@ run_haplotyping(
 \item{snp6_reference_info_file}{SNP6 only parameter Default: NA}
 
 \item{heterozygousFilter}{SNP6 only parameter Default: NA}
+
+\item{het_baf_cutoff}{WGS only: normal BAF must be strictly between het_baf_cutoff and 1-het_baf_cutoff for a SNP to be called heterozygous (Default: 0.1)}
 }
 \description{
 This function takes preprocessed data and performs haplotype reconstruction.
