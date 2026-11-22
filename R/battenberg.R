@@ -43,6 +43,7 @@
 #' @param birdseed_report_file Sex inference output file, SNP6 pipeline only (Default: birdseed.report.txt)
 #' @param heterozygousFilter Legacy option to set a heterozygous SNP filter, SNP6 pipeline only (Default: "none")
 #' @param het_baf_cutoff WGS only: a SNP is called heterozygous in the matched normal when its BAF is strictly between het_baf_cutoff and 1-het_baf_cutoff. Raise it (e.g. 0.2) for noisy normals, where reads at homozygous SNPs give false heterozygous calls, most visibly in germline runs of homozygosity (Default: 0.1)
+#' @param recentre_logr Remove the LogR offset between heterozygous SNPs and all loci before fitting purity and ploidy. The fit uses LogR averaged over heterozygous SNPs, while callSubclones uses LogR averaged over all loci; in low-coverage genomes the two can differ by a genome-wide offset (up to ~1 at ~11x), which shifts the grid search and inflates the ploidy reported in rho_and_psi. The offset is always written to <tumourname>_logr_offset.txt; with TRUE it is also subtracted from the fitting LogR (Default: FALSE)
 #' @param prior_breakpoints_file A two column file with prior breakpoints to be used during segmentation (Default: NULL)
 #' @author sd11
 #' @export
@@ -52,7 +53,7 @@ battenberg = function(tumourname, normalname, tumour_data_file, normal_data_file
                       max_ploidy=4.8, min_rho=0.1, min_goodness=0.63, uninformative_BAF_threshold=0.51, min_normal_depth=10, min_base_qual=20, 
                       min_map_qual=35, calc_seg_baf_option=3, skip_allele_counting=F, skip_preprocessing=F, skip_phasing=F,
                       snp6_reference_info_file=NA, apt.probeset.genotype.exe="apt-probeset-genotype", apt.probeset.summarize.exe="apt-probeset-summarize", 
-                      norm.geno.clust.exe="normalize_affy_geno_cluster.pl", birdseed_report_file="birdseed.report.txt", heterozygousFilter="none", het_baf_cutoff=0.1,
+                      norm.geno.clust.exe="normalize_affy_geno_cluster.pl", birdseed_report_file="birdseed.report.txt", heterozygousFilter="none", het_baf_cutoff=0.1, recentre_logr=FALSE,
                       prior_breakpoints_file=NULL,chr_prefixed=FALSE,verbose=FALSE,logfile_prefix="./",ref_fasta=NULL) {
   
   requireNamespace("foreach")
@@ -202,7 +203,8 @@ battenberg = function(tumourname, normalname, tumour_data_file, normal_data_file
                   use_preset_rho_psi=F, 
                   preset_rho=NA, 
                   preset_psi=NA, 
-                  read_depth=30)
+                  read_depth=30,
+                  recentre_logr=recentre_logr)
   
   # Go over all segments, determine which segements are a mixture of two states and fit a second CN state
   if(chr_prefixed){

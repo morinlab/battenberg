@@ -46,6 +46,7 @@ battenberg(
   birdseed_report_file = "birdseed.report.txt",
   heterozygousFilter = "none",
   het_baf_cutoff = 0.1,
+  recentre_logr = FALSE,
   prior_breakpoints_file = NULL
 )
 }
@@ -131,6 +132,8 @@ battenberg(
 \item{heterozygousFilter}{Legacy option to set a heterozygous SNP filter, SNP6 pipeline only (Default: "none")}
 
 \item{het_baf_cutoff}{WGS only: a SNP is called heterozygous in the matched normal when its BAF is strictly between het_baf_cutoff and 1-het_baf_cutoff. Raise it (e.g. 0.2) for noisy normals, where reads at homozygous SNPs give false heterozygous calls, most visibly in germline runs of homozygosity (Default: 0.1)}
+
+\item{recentre_logr}{Remove the LogR offset between heterozygous SNPs and all loci before fitting purity and ploidy. The fit uses LogR averaged over heterozygous SNPs, while callSubclones uses LogR averaged over all loci; in low-coverage genomes the two can differ by a genome-wide offset (up to ~1 at ~11x), which shifts the grid search and inflates the ploidy reported in rho_and_psi. The offset is always written to <tumourname>_logr_offset.txt; with TRUE it is also subtracted from the fitting LogR (Default: FALSE)}
 
 \item{prior_breakpoints_file}{A two column file with prior breakpoints to be used during segmentation (Default: NULL)}
 }

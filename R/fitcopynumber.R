@@ -22,9 +22,12 @@
 #' @param preset_rho A user specified rho to fit a copy number profile to (Default NA)
 #' @param preset_psi A user specified psi to fit a copy number profile to (Default NA)
 #' @param read_depth Legacy parameter that is no longer used (Default 30)
+#' @param recentre_logr Subtract the offset between the mean LogR at heterozygous SNPs (used here for fitting)
+#' and the mean LogR over all loci (used by callSubclones) from the fitting LogR. The offset is written to
+#' <outputfile.prefix>logr_offset.txt either way (Default FALSE)
 #' @author dw9, sd11
 #' @export
-fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmented, inputfile.baf, inputfile.logr, dist_choice, ascat_dist_choice, min.ploidy=1.6, max.ploidy=4.8, min.rho=0.1,  max.rho=1.0, min.goodness=63, uninformative_BAF_threshold=0.51, gamma_param=1, use_preset_rho_psi=F, preset_rho=NA, preset_psi=NA, read_depth=30) {
+fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmented, inputfile.baf, inputfile.logr, dist_choice, ascat_dist_choice, min.ploidy=1.6, max.ploidy=4.8, min.rho=0.1,  max.rho=1.0, min.goodness=63, uninformative_BAF_threshold=0.51, gamma_param=1, use_preset_rho_psi=F, preset_rho=NA, preset_psi=NA, read_depth=30, recentre_logr=FALSE) {
   
   assert.file.exists(inputfile.baf.segmented)
   assert.file.exists(inputfile.baf)
@@ -147,6 +150,21 @@ fit.copy.number = function(samplename, outputfile.prefix, inputfile.baf.segmente
   names(segBAF) = rownames(matched.segmented.BAF.data)
   names(segLogR) = rownames(matched.segmented.BAF.data)
   names(logR) = rownames(matched.segmented.BAF.data)
+
+  # The fit uses LogR averaged over heterozygous SNPs (segLogR), but callSubclones averages LogR over all
+  # loci. In low-coverage genomes the two can differ by a genome-wide offset, which shifts the grid search
+  # and the ploidy it reports. Both sides are averaged as Battenberg averages them: the mean of finite values.
+  het_logr = logR[is.finite(logR)]
+  all_logr = raw.logR.data[,3][is.finite(raw.logR.data[,3])]
+  logr_offset = mean(het_logr) - mean(all_logr)
+  print(paste0("LogR mean at heterozygous SNPs: ", signif(mean(het_logr), 4), ", over all loci: ", signif(mean(all_logr), 4),
+               ", offset: ", signif(logr_offset, 4), if (recentre_logr) " (removed before fitting)" else " (not removed; recentre_logr=FALSE)"))
+  write.table(data.frame(het_snp_mean=mean(het_logr), all_loci_mean=mean(all_logr), offset=logr_offset, removed=recentre_logr),
+              paste(outputfile.prefix, "logr_offset.txt", sep=""), quote=F, sep="\t", row.names=F)
+  if (recentre_logr) {
+    segLogR = segLogR - logr_offset
+    logR = logR - logr_offset
+  }
   
   chr.segs = NULL
   for(ch in 1:length(chr.names)){

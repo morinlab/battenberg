@@ -22,7 +22,8 @@ fit.copy.number(
   use_preset_rho_psi = F,
   preset_rho = NA,
   preset_psi = NA,
-  read_depth = 30
+  read_depth = 30,
+  recentre_logr = FALSE
 )
 }
 \arguments{
@@ -61,6 +62,10 @@ fit.copy.number(
 \item{preset_psi}{A user specified psi to fit a copy number profile to (Default NA)}
 
 \item{read_depth}{Legacy parameter that is no longer used (Default 30)}
+
+\item{recentre_logr}{Subtract the offset between the mean LogR at heterozygous SNPs (used here for fitting)
+and the mean LogR over all loci (used by callSubclones) from the fitting LogR. The offset is written to
+<outputfile.prefix>logr_offset.txt either way (Default FALSE)}
 }
 \description{
 Function that will fit a clonal copy number profile to segmented data. It first
